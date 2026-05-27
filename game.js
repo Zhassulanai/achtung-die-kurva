@@ -12,17 +12,23 @@ const BONUS_RADIUS = 14;
 const MAX_BONUSES = 3;
 
 const BONUS_TYPES = [
-  { type: 'speedUp',   color: '#4f4', icon: '⚡' },
-  { type: 'slowDown',  color: '#fa4', icon: '🐢' },
-  { type: 'thinLine',  color: '#4cf', icon: '➖' },
-  { type: 'thickLine', color: '#a4f', icon: '⬛' },
-  { type: 'clearAll',  color: '#fff', icon: '🧹' },
-  { type: 'reverse',   color: '#f44', icon: '🔄' },
+  { type: 'speedUp',   color: '#4f4', icon: '⚡', category: 'self' },
+  { type: 'slowDown',  color: '#fa4', icon: '🐢', category: 'enemy' },
+  { type: 'thinLine',  color: '#4cf', icon: '➖', category: 'self' },
+  { type: 'thickLine', color: '#a4f', icon: '⬛', category: 'enemy' },
+  { type: 'clearAll',  color: '#fff', icon: '🧹', category: 'all' },
+  { type: 'reverse',   color: '#f44', icon: '🔄', category: 'enemy' },
 ];
+
+const BONUS_OUTLINE = {
+  self:  '#3f3',
+  enemy: '#f33',
+  all:   '#39f',
+};
 
 const state = {
   screen: 'menu',
-  phase: 'menu', // 'menu' | 'countdown' | 'playing' | 'between-rounds' | 'game-over'
+  phase: 'menu', // 'menu' | 'countdown' | 'playing' | 'paused' | 'between-rounds' | 'game-over'
   players: [],
   bonuses: [],
   bonusSpawnTimer: 3,
@@ -173,11 +179,27 @@ function updateRoundState() {
   }
 }
 
+function pauseGame() {
+  state.phase = 'paused';
+  state.running = false;
+  document.getElementById('round-message').textContent = 'Пауза';
+  document.getElementById('round-hint').textContent = 'Enter / Space — продолжить';
+  document.getElementById('round-overlay').classList.remove('hidden');
+}
+
+function resumeGame() {
+  state.phase = 'playing';
+  hideRoundOverlay();
+  state.lastFrameTime = performance.now();
+  state.running = true;
+  requestAnimationFrame(gameLoop);
+}
+
 function showRoundOverlay() {
   const winner = state.players.find(p => p.alive);
   const msg = winner ? `Победитель раунда: ${winner.name} (+1)` : 'Никто не выжил';
   document.getElementById('round-message').textContent = msg;
-  document.getElementById('round-hint').textContent = 'Нажми Enter для следующего раунда';
+  document.getElementById('round-hint').textContent = 'Enter / Space — следующий раунд';
   document.getElementById('round-overlay').classList.remove('hidden');
   updateSidebar();
   checkGameOver();
@@ -192,7 +214,7 @@ function checkGameOver() {
   if (winner) {
     state.phase = 'game-over';
     document.getElementById('round-message').textContent = `🏆 Победил ${winner.name}!`;
-    document.getElementById('round-hint').textContent = 'Нажми Enter для возврата в меню';
+    document.getElementById('round-hint').textContent = 'Enter / Space — возврат в меню';
   }
 }
 
@@ -426,6 +448,9 @@ function drawBonuses() {
     ctx.beginPath();
     ctx.arc(b.x, b.y, BONUS_RADIUS, 0, Math.PI * 2);
     ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = BONUS_OUTLINE[b.category] || '#fff';
+    ctx.stroke();
     ctx.font = '18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -625,14 +650,22 @@ window.addEventListener('keydown', (e) => {
     renderPlayerList();
     return;
   }
-  // Enter для запуска игры из меню и перехода между раундами
-  if (e.key === 'Enter') {
-    if (state.phase === 'menu') {
+  const isConfirm = e.key === 'Enter' || e.key === ' ' || e.code === 'Space';
+  if (isConfirm) {
+    if (state.phase === 'menu' && e.key === 'Enter') {
       const startBtn = document.getElementById('start-btn');
       if (!startBtn.disabled) startGame();
+    } else if (state.phase === 'playing') {
+      e.preventDefault();
+      pauseGame();
+    } else if (state.phase === 'paused') {
+      e.preventDefault();
+      resumeGame();
     } else if (state.phase === 'between-rounds') {
+      e.preventDefault();
       startRound();
     } else if (state.phase === 'game-over') {
+      e.preventDefault();
       hideRoundOverlay();
       state.phase = 'menu';
       showScreen('menu');
