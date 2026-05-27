@@ -25,6 +25,7 @@ const BONUS_TYPES = [
   { type: 'clearAll',  color: '#fff', icon: '🧹', fixedCategory: 'all' },
   { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'all', duration: 8 },
   { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'self', duration: 8 },
+  { type: 'bonusRain', color: '#ff0', icon: '🎁', fixedCategory: 'all', duration: 8 },
 ];
 
 const BONUS_OUTLINE = {
@@ -40,6 +41,7 @@ const state = {
   bonuses: [],
   bonusSpawnTimer: 3,
   wallsBlinkTimer: 0,
+  bonusRainTimer: 0,
   ctx: null,
   bonusesCtx: null,
   headsCtx: null,
@@ -465,10 +467,14 @@ function updatePlayers(dt) {
 
 // === BONUSES ================================================
 function updateBonuses(dt) {
+  if (state.bonusRainTimer > 0) state.bonusRainTimer -= dt;
+  const rain = state.bonusRainTimer > 0;
+  const maxBonuses = rain ? MAX_BONUSES * 3 : MAX_BONUSES;
   state.bonusSpawnTimer -= dt;
   if (state.bonusSpawnTimer <= 0) {
-    if (state.bonuses.length < MAX_BONUSES) trySpawnBonus();
-    state.bonusSpawnTimer = 3 + Math.random() * 4;
+    if (state.bonuses.length < maxBonuses) trySpawnBonus();
+    const base = 3 + Math.random() * 4;
+    state.bonusSpawnTimer = rain ? base / 3 : base;
   }
   drawBonuses();
 }
@@ -544,6 +550,10 @@ function pickupBonusesAt(p) {
 function applyBonus(picker, bonus) {
   if (bonus.type === 'clearAll') {
     clearAllTrails();
+  } else if (bonus.type === 'bonusRain') {
+    state.bonusRainTimer = bonus.duration || EFFECT_DURATION;
+    // Сразу сбрасываем таймер до короткого, чтобы эффект почувствовался
+    state.bonusSpawnTimer = Math.min(state.bonusSpawnTimer, 0.3);
   } else {
     let targets;
     if (bonus.category === 'self') targets = [picker];
@@ -679,6 +689,7 @@ function startRound() {
   state.bonuses = [];
   state.bonusSpawnTimer = 3;
   state.wallsBlinkTimer = 0;
+  state.bonusRainTimer = 0;
   hideRoundOverlay();
   state.phase = 'countdown';
   updateSidebar();
