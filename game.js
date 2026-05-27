@@ -10,7 +10,8 @@ const TURN_RATE = 3.0;
 const EFFECT_DURATION = 5;
 const BLINK_PERIOD_MS = 150; // полупериод мигания для wallPass
 const BONUS_RADIUS = 14;
-const MAX_BONUSES = 3;
+const MAX_BONUSES = 8;
+const MAX_BONUSES_RAIN = 16;
 
 // fixedCategory задаёт категорию жёстко (например для clearAll). Если
 // не указана — при спавне случайно выбирается 'self' или 'enemy'.
@@ -469,7 +470,7 @@ function updatePlayers(dt) {
 function updateBonuses(dt) {
   if (state.bonusRainTimer > 0) state.bonusRainTimer -= dt;
   const rain = state.bonusRainTimer > 0;
-  const maxBonuses = rain ? MAX_BONUSES * 3 : MAX_BONUSES;
+  const maxBonuses = rain ? MAX_BONUSES_RAIN : MAX_BONUSES;
   state.bonusSpawnTimer -= dt;
   if (state.bonusSpawnTimer <= 0) {
     if (state.bonuses.length < maxBonuses) trySpawnBonus();
