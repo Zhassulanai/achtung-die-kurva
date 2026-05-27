@@ -364,7 +364,11 @@ function updatePlayers(dt) {
       // только что нарисованный бок (бывает при повороте у толстой змейки).
       const dxOld = cx - oldX;
       const dyOld = cy - oldY;
-      const tooCloseToOld = dxOld * dxOld + dyOld * dyOld < (p.thickness * 0.8) ** 2;
+      // Радиус «прощения» собственного свежего следа считаем от
+       // baseThickness, иначе после thinLine точка проверки попадает в
+       // ещё толстый старый бок и убивает подбирающего.
+      const selfRadius = Math.max(p.thickness, p.baseThickness) * 0.8;
+      const tooCloseToOld = dxOld * dxOld + dyOld * dyOld < selfRadius ** 2;
       if (!tooCloseToOld && cx >= 0 && cx < FIELD_SIZE && cy >= 0 && cy < FIELD_SIZE) {
         const data = ctx.getImageData(cx, cy, 1, 1).data;
         if (data[3] > 0 && (data[0] > 10 || data[1] > 10 || data[2] > 10)) {
@@ -444,12 +448,18 @@ function drawBonuses() {
   const ctx = state.bonusesCtx;
   ctx.clearRect(0, 0, FIELD_SIZE, FIELD_SIZE);
   for (const b of state.bonuses) {
+    const outline = BONUS_OUTLINE[b.category] || '#fff';
+    // Заливка чуть меньшего радиуса, кольцо рисуем поверх — так контур
+    // полностью лежит снаружи заливки и хорошо виден.
+    const ringWidth = 4;
     ctx.fillStyle = b.color;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, BONUS_RADIUS, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, BONUS_RADIUS - ringWidth / 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = BONUS_OUTLINE[b.category] || '#fff';
+    ctx.lineWidth = ringWidth;
+    ctx.strokeStyle = outline;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, BONUS_RADIUS - ringWidth / 2, 0, Math.PI * 2);
     ctx.stroke();
     ctx.font = '18px sans-serif';
     ctx.textAlign = 'center';
