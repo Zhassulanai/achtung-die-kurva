@@ -8,6 +8,7 @@ const BASE_SPEED = 90;
 const BASE_THICKNESS = 4;
 const TURN_RATE = 3.0;
 const EFFECT_DURATION = 5;
+const WALL_PASS_DURATION = 8;
 const BLINK_PERIOD_MS = 150; // полупериод мигания для wallPass
 const BONUS_RADIUS = 14;
 const MAX_BONUSES = 3;
@@ -543,10 +544,11 @@ function applyBonus(picker, bonus) {
     if (bonus.category === 'self') targets = [picker];
     else if (bonus.category === 'all') targets = state.players.filter(p => p.alive);
     else targets = state.players.filter(p => p !== picker && p.alive);
-    for (const p of targets) addEffect(p, bonus.type, EFFECT_DURATION);
+    const duration = bonus.type === 'wallPass' ? WALL_PASS_DURATION : EFFECT_DURATION;
+    for (const p of targets) addEffect(p, bonus.type, duration);
     // Общий wallPass — стены мигают
     if (bonus.type === 'wallPass' && bonus.category === 'all') {
-      state.wallsBlinkTimer = EFFECT_DURATION;
+      state.wallsBlinkTimer = duration;
     }
   }
   console.log(`${picker.name} picked up ${bonus.type} (${bonus.category})`);
