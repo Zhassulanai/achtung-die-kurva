@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Achtung die Kurva</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="screen-menu" class="screen active">
+    <h1>Achtung die Kurva</h1>
+    <div id="player-count-buttons">
+      <button class="count-btn" data-count="2">2 игрока</button>
+      <button class="count-btn" data-count="3">3 игрока</button>
+      <button class="count-btn" data-count="4">4 игрока</button>
+    </div>
+    <div id="player-list"></div>
+    <button id="start-btn">Старт</button>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div id="field-wrap">
+      <canvas id="field" width="840" height="840"></canvas>
+      <canvas id="bonuses" width="840" height="840"></canvas>
+      <canvas id="heads" width="840" height="840"></canvas>
+      <div id="round-overlay" class="hidden">
+        <div id="round-message"></div>
+        <div id="round-hint">Нажми Enter для следующего раунда</div>
+      </div>
+    </div>
+    <aside id="sidebar">
+      <h2>Счёт</h2>
+      <div id="score-list"></div>
+      <button id="back-to-menu">В меню</button>
+    </aside>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
