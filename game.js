@@ -11,13 +11,15 @@ const EFFECT_DURATION = 5;
 const BONUS_RADIUS = 14;
 const MAX_BONUSES = 3;
 
+// fixedCategory задаёт категорию жёстко (например для clearAll). Если
+// не указана — при спавне случайно выбирается 'self' или 'enemy'.
 const BONUS_TYPES = [
-  { type: 'speedUp',   color: '#4f4', icon: '⚡', category: 'self' },
-  { type: 'slowDown',  color: '#fa4', icon: '🐢', category: 'enemy' },
-  { type: 'thinLine',  color: '#4cf', icon: '➖', category: 'self' },
-  { type: 'thickLine', color: '#a4f', icon: '⬛', category: 'enemy' },
-  { type: 'clearAll',  color: '#fff', icon: '🧹', category: 'all' },
-  { type: 'reverse',   color: '#f44', icon: '🔄', category: 'enemy' },
+  { type: 'speedUp',   color: '#4f4', icon: '⚡' },
+  { type: 'slowDown',  color: '#fa4', icon: '🐢' },
+  { type: 'thinLine',  color: '#4cf', icon: '➖' },
+  { type: 'thickLine', color: '#a4f', icon: '⬛' },
+  { type: 'reverse',   color: '#f44', icon: '🔄' },
+  { type: 'clearAll',  color: '#fff', icon: '🧹', fixedCategory: 'all' },
 ];
 
 const BONUS_OUTLINE = {
@@ -425,7 +427,8 @@ function trySpawnBonus() {
     const y = BONUS_RADIUS + 10 + Math.random() * (FIELD_SIZE - (BONUS_RADIUS + 10) * 2);
     if (isAreaClear(x, y, BONUS_RADIUS + 4)) {
       const t = BONUS_TYPES[Math.floor(Math.random() * BONUS_TYPES.length)];
-      state.bonuses.push({ x, y, ...t });
+      const category = t.fixedCategory || (Math.random() < 0.5 ? 'self' : 'enemy');
+      state.bonuses.push({ x, y, ...t, category });
       return;
     }
   }
@@ -487,33 +490,15 @@ function pickupBonusesAt(p) {
 }
 
 function applyBonus(picker, bonus) {
-  switch (bonus.type) {
-    case 'speedUp':
-      addEffect(picker, 'speedUp', EFFECT_DURATION);
-      break;
-    case 'thinLine':
-      addEffect(picker, 'thinLine', EFFECT_DURATION);
-      break;
-    case 'slowDown':
-      for (const p of state.players) {
-        if (p !== picker && p.alive) addEffect(p, 'slowDown', EFFECT_DURATION);
-      }
-      break;
-    case 'thickLine':
-      for (const p of state.players) {
-        if (p !== picker && p.alive) addEffect(p, 'thickLine', EFFECT_DURATION);
-      }
-      break;
-    case 'reverse':
-      for (const p of state.players) {
-        if (p !== picker && p.alive) addEffect(p, 'reverse', EFFECT_DURATION);
-      }
-      break;
-    case 'clearAll':
-      clearAllTrails();
-      break;
+  if (bonus.type === 'clearAll') {
+    clearAllTrails();
+  } else {
+    const targets = bonus.category === 'self'
+      ? [picker]
+      : state.players.filter(p => p !== picker && p.alive);
+    for (const p of targets) addEffect(p, bonus.type, EFFECT_DURATION);
   }
-  console.log(`${picker.name} picked up ${bonus.type}`);
+  console.log(`${picker.name} picked up ${bonus.type} (${bonus.category})`);
 }
 
 function addEffect(player, name, duration) {
