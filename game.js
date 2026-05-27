@@ -24,8 +24,7 @@ const BONUS_TYPES = [
   { type: 'noTrail',   color: '#888', icon: '🌫️' },
   { type: 'trailPass', color: '#fff', icon: '⬜', duration: 8 },
   { type: 'clearAll',  color: '#fff', icon: '🧹', fixedCategory: 'all' },
-  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'all', duration: 8 },
-  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'self', duration: 8 },
+  { type: 'wallPass',  color: '#ddd', icon: '👻', categories: ['all', 'self'], duration: 8 },
   { type: 'bonusRain', color: '#ff0', icon: '🎁', fixedCategory: 'all', duration: 8 },
 ];
 
@@ -486,7 +485,10 @@ function trySpawnBonus() {
     const y = BONUS_RADIUS + 10 + Math.random() * (FIELD_SIZE - (BONUS_RADIUS + 10) * 2);
     if (isAreaClear(x, y, BONUS_RADIUS + 4)) {
       const t = BONUS_TYPES[Math.floor(Math.random() * BONUS_TYPES.length)];
-      const category = t.fixedCategory || (Math.random() < 0.5 ? 'self' : 'enemy');
+      let category;
+      if (t.fixedCategory) category = t.fixedCategory;
+      else if (t.categories) category = t.categories[Math.floor(Math.random() * t.categories.length)];
+      else category = Math.random() < 0.5 ? 'self' : 'enemy';
       state.bonuses.push({ x, y, ...t, category });
       return;
     }
