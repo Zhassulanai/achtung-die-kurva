@@ -416,12 +416,13 @@ function updatePlayers(dt) {
       // последних позиций собственной головы — это значит, что мы смотрим
       // на свой только что нарисованный бок (при повороте у толстой
       // змейки бок остаётся в нескольких кадрах назад).
-      const selfRadius = Math.max(p.thickness, p.baseThickness) * 0.9;
+      const selfRadius = Math.max(p.thickness, p.baseThickness) * 1.0;
       const selfR2 = selfRadius * selfRadius;
       let tooCloseToOld = false;
       const trail = p.recentTrail;
-      // Проверяем последние ~15 точек (≈ четверть секунды пути).
-      const startIdx = Math.max(0, trail.length - 15);
+      // Проверяем все точки recentTrail (последние ~0.5с пути), чтобы
+      // покрыть толстую змейку в начале поворота.
+      const startIdx = 0;
       for (let i = trail.length - 1; i >= startIdx; i--) {
         const dx = cx - trail[i].x;
         const dy = cy - trail[i].y;
@@ -571,7 +572,7 @@ function applyBonus(picker, bonus) {
       // короткий иммунитет, чтобы новая голова успела отъехать от
       // своего недавнего следа.
       if (bonus.type === 'thickLine' || bonus.type === 'thinLine') {
-        if (p.spawnImmunity < 0.2) p.spawnImmunity = 0.2;
+        if (p.spawnImmunity < 0.5) p.spawnImmunity = 0.5;
       }
     }
     // Общий wallPass — стены мигают
