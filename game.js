@@ -192,10 +192,12 @@ function drawHeads() {
     if (!p.alive) continue;
     // wallPass: голова мигает в той же фазе, что и рамка поля
     if (p.effects.wallPass && !blink) continue;
-    // Цвет: trailPass (белый) > reverse (красный) > обычный (жёлтый)
-    if (p.effects.trailPass) ctx.fillStyle = '#fff';
-    else if (p.effects.reverse) ctx.fillStyle = '#f44';
-    else ctx.fillStyle = '#ff0';
+    // Цвет: trailPass — мигает между белым и обычным цветом, чтобы был
+    // заметен. Иначе: reverse красный, обычно жёлтый.
+    let baseColor;
+    if (p.effects.reverse) baseColor = '#f44';
+    else baseColor = '#ff0';
+    ctx.fillStyle = p.effects.trailPass && blink ? '#fff' : baseColor;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.thickness / 2 - 0.5, 0, Math.PI * 2);
     ctx.fill();
