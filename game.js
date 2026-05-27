@@ -8,7 +8,6 @@ const BASE_SPEED = 90;
 const BASE_THICKNESS = 4;
 const TURN_RATE = 3.0;
 const EFFECT_DURATION = 5;
-const WALL_PASS_DURATION = 8;
 const BLINK_PERIOD_MS = 150; // полупериод мигания для wallPass
 const BONUS_RADIUS = 14;
 const MAX_BONUSES = 3;
@@ -22,9 +21,10 @@ const BONUS_TYPES = [
   { type: 'thickLine', color: '#a4f', icon: '━' },
   { type: 'reverse',   color: '#f44', icon: '🔄' },
   { type: 'noTrail',   color: '#888', icon: '🌫️' },
+  { type: 'trailPass', color: '#fff', icon: '⬜', duration: 8 },
   { type: 'clearAll',  color: '#fff', icon: '🧹', fixedCategory: 'all' },
-  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'all' },
-  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'self' },
+  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'all', duration: 8 },
+  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'self', duration: 8 },
 ];
 
 const BONUS_OUTLINE = {
@@ -190,7 +190,10 @@ function drawHeads() {
     if (!p.alive) continue;
     // wallPass: голова мигает в той же фазе, что и рамка поля
     if (p.effects.wallPass && !blink) continue;
-    ctx.fillStyle = '#ff0';
+    // Цвет: trailPass (белый) > reverse (красный) > обычный (жёлтый)
+    if (p.effects.trailPass) ctx.fillStyle = '#fff';
+    else if (p.effects.reverse) ctx.fillStyle = '#f44';
+    else ctx.fillStyle = '#ff0';
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.thickness / 2 - 0.5, 0, Math.PI * 2);
     ctx.fill();
@@ -399,6 +402,8 @@ function updatePlayers(dt) {
     // хвост — убивают.
     if (p.spawnImmunity > 0) {
       p.spawnImmunity -= dt;
+    } else if (p.effects.trailPass) {
+      // trailPass — игнорируем все хвосты
     } else {
       const lookAhead = p.thickness / 2 + 1;
       const cx = Math.floor(p.x + Math.cos(p.angle) * lookAhead);
@@ -544,7 +549,7 @@ function applyBonus(picker, bonus) {
     if (bonus.category === 'self') targets = [picker];
     else if (bonus.category === 'all') targets = state.players.filter(p => p.alive);
     else targets = state.players.filter(p => p !== picker && p.alive);
-    const duration = bonus.type === 'wallPass' ? WALL_PASS_DURATION : EFFECT_DURATION;
+    const duration = bonus.duration || EFFECT_DURATION;
     for (const p of targets) addEffect(p, bonus.type, duration);
     // Общий wallPass — стены мигают
     if (bonus.type === 'wallPass' && bonus.category === 'all') {
@@ -577,6 +582,7 @@ const EFFECT_LABELS = {
   reverse: '🔄',
   noTrail: '🌫️',
   wallPass: '👻',
+  trailPass: '⬜',
 };
 
 function updateSidebar() {
