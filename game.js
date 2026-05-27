@@ -550,7 +550,15 @@ function applyBonus(picker, bonus) {
     else if (bonus.category === 'all') targets = state.players.filter(p => p.alive);
     else targets = state.players.filter(p => p !== picker && p.alive);
     const duration = bonus.duration || EFFECT_DURATION;
-    for (const p of targets) addEffect(p, bonus.type, duration);
+    for (const p of targets) {
+      addEffect(p, bonus.type, duration);
+      // Изменение толщины смещает точку проверки коллизий — даём
+      // короткий иммунитет, чтобы новая голова успела отъехать от
+      // своего недавнего следа.
+      if (bonus.type === 'thickLine' || bonus.type === 'thinLine') {
+        if (p.spawnImmunity < 0.2) p.spawnImmunity = 0.2;
+      }
+    }
     // Общий wallPass — стены мигают
     if (bonus.type === 'wallPass' && bonus.category === 'all') {
       state.wallsBlinkTimer = duration;
