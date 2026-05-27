@@ -337,19 +337,25 @@ function updatePlayers(dt) {
   for (const p of state.players) {
     if (!p.alive) continue;
 
-    // Обновить таймеры эффектов
+    // Обновить таймеры эффектов (каждый эффект — массив таймеров,
+    // длина массива = число стаков).
     for (const name of Object.keys(p.effects)) {
-      p.effects[name] -= dt;
-      if (p.effects[name] <= 0) delete p.effects[name];
+      const arr = p.effects[name];
+      for (let i = arr.length - 1; i >= 0; i--) {
+        arr[i] -= dt;
+        if (arr[i] <= 0) arr.splice(i, 1);
+      }
+      if (arr.length === 0) delete p.effects[name];
     }
 
-    // Применить эффекты
-    const speedMult = (p.effects.speedUp ? 1.7 : 1) * (p.effects.slowDown ? 0.5 : 1);
-    const thickMult = (p.effects.thinLine ? 0.5 : 1) * (p.effects.thickLine ? 2 : 1);
+    // Применить эффекты (стаки складываются как степени множителя)
+    const stacks = name => (p.effects[name] ? p.effects[name].length : 0);
+    const speedMult = Math.pow(1.7, stacks('speedUp')) * Math.pow(0.5, stacks('slowDown'));
+    const thickMult = Math.pow(0.5, stacks('thinLine')) * Math.pow(2, stacks('thickLine'));
     p.speed = p.baseSpeed * speedMult;
     p.thickness = p.baseThickness * thickMult;
 
-    const reverse = p.effects.reverse ? -1 : 1;
+    const reverse = stacks('reverse') % 2 === 1 ? -1 : 1;
     if (p.pressed.left)  p.angle -= TURN_RATE * dt * reverse;
     if (p.pressed.right) p.angle += TURN_RATE * dt * reverse;
 
@@ -547,7 +553,8 @@ function applyBonus(picker, bonus) {
 }
 
 function addEffect(player, name, duration) {
-  player.effects[name] = (player.effects[name] || 0) + duration;
+  if (!player.effects[name]) player.effects[name] = [];
+  player.effects[name].push(duration);
 }
 
 function clearAllTrails() {
@@ -578,8 +585,12 @@ function updateSidebar() {
     const row = document.createElement('div');
     row.className = 'score-row';
     const effectsList = Object.entries(p.effects)
-      .filter(([, t]) => t > 0)
-      .map(([name, t]) => `<span class="effect">${EFFECT_LABELS[name] || name} ${t.toFixed(1)}s</span>`)
+      .filter(([, arr]) => arr.length > 0)
+      .map(([name, arr]) => {
+        const maxT = Math.max(...arr);
+        const stackTag = arr.length > 1 ? `×${arr.length} ` : '';
+        return `<span class="effect">${EFFECT_LABELS[name] || name} ${stackTag}${maxT.toFixed(1)}s</span>`;
+      })
       .join('');
     row.innerHTML = `
       <div class="score-main">
