@@ -396,16 +396,21 @@ function updatePlayers(dt) {
       const lookAhead = p.thickness / 2 + 1;
       const cx = Math.floor(p.x + Math.cos(p.angle) * lookAhead);
       const cy = Math.floor(p.y + Math.sin(p.angle) * lookAhead);
-      // Игнорируем столкновение, если точка проверки слишком близко к
-      // предыдущей позиции головы — это значит, что мы смотрим на свой
-      // только что нарисованный бок (бывает при повороте у толстой змейки).
-      const dxOld = cx - oldX;
-      const dyOld = cy - oldY;
-      // Радиус «прощения» собственного свежего следа считаем от
-       // baseThickness, иначе после thinLine точка проверки попадает в
-       // ещё толстый старый бок и убивает подбирающего.
-      const selfRadius = Math.max(p.thickness, p.baseThickness) * 0.8;
-      const tooCloseToOld = dxOld * dxOld + dyOld * dyOld < selfRadius ** 2;
+      // Игнорируем столкновение, если точка проверки близка к любой из
+      // последних позиций собственной головы — это значит, что мы смотрим
+      // на свой только что нарисованный бок (при повороте у толстой
+      // змейки бок остаётся в нескольких кадрах назад).
+      const selfRadius = Math.max(p.thickness, p.baseThickness) * 0.9;
+      const selfR2 = selfRadius * selfRadius;
+      let tooCloseToOld = false;
+      const trail = p.recentTrail;
+      // Проверяем последние ~15 точек (≈ четверть секунды пути).
+      const startIdx = Math.max(0, trail.length - 15);
+      for (let i = trail.length - 1; i >= startIdx; i--) {
+        const dx = cx - trail[i].x;
+        const dy = cy - trail[i].y;
+        if (dx * dx + dy * dy < selfR2) { tooCloseToOld = true; break; }
+      }
       if (!tooCloseToOld && cx >= 0 && cx < FIELD_SIZE && cy >= 0 && cy < FIELD_SIZE) {
         const data = ctx.getImageData(cx, cy, 1, 1).data;
         if (data[3] > 0 && (data[0] > 10 || data[1] > 10 || data[2] > 10)) {
