@@ -8,6 +8,7 @@ const BASE_SPEED = 90;
 const BASE_THICKNESS = 4;
 const TURN_RATE = 3.0;
 const EFFECT_DURATION = 5;
+const BLINK_PERIOD_MS = 150; // полупериод мигания для wallPass
 const BONUS_RADIUS = 14;
 const MAX_BONUSES = 3;
 
@@ -19,7 +20,10 @@ const BONUS_TYPES = [
   { type: 'thinLine',  color: '#4cf', icon: '➖' },
   { type: 'thickLine', color: '#a4f', icon: '⬛' },
   { type: 'reverse',   color: '#f44', icon: '🔄' },
+  { type: 'noTrail',   color: '#888', icon: '🌫️' },
   { type: 'clearAll',  color: '#fff', icon: '🧹', fixedCategory: 'all' },
+  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'all' },
+  { type: 'wallPass',  color: '#ddd', icon: '👻', fixedCategory: 'self' },
 ];
 
 const BONUS_OUTLINE = {
@@ -34,6 +38,7 @@ const state = {
   players: [],
   bonuses: [],
   bonusSpawnTimer: 3,
+  wallsBlinkTimer: 0,
   ctx: null,
   bonusesCtx: null,
   headsCtx: null,
@@ -154,16 +159,36 @@ function gameLoop(now) {
   updatePlayers(dt);
   updateBonuses(dt);
   drawHeads();
+  updateWallsBlink(dt);
   updateSidebar();
   updateRoundState();
   if (state.running) requestAnimationFrame(gameLoop);
 }
 
+function updateWallsBlink(dt) {
+  if (state.wallsBlinkTimer > 0) {
+    state.wallsBlinkTimer -= dt;
+    const field = document.getElementById('field');
+    if (state.wallsBlinkTimer > 0) {
+      field.style.borderColor = blinkOn() ? '#ddd' : '#444';
+    } else {
+      field.style.borderColor = '';
+    }
+  }
+}
+
+function blinkOn() {
+  return Math.floor(performance.now() / BLINK_PERIOD_MS) % 2 === 0;
+}
+
 function drawHeads() {
   const ctx = state.headsCtx;
   ctx.clearRect(0, 0, FIELD_SIZE, FIELD_SIZE);
+  const blink = blinkOn();
   for (const p of state.players) {
     if (!p.alive) continue;
+    // wallPass: голова мигает в той же фазе, что и рамка поля
+    if (p.effects.wallPass && !blink) continue;
     ctx.fillStyle = '#ff0';
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.thickness / 2 - 0.5, 0, Math.PI * 2);
@@ -337,14 +362,24 @@ function updatePlayers(dt) {
     p.recentTrail.push({ x: p.x, y: p.y });
     if (p.recentTrail.length > 30) p.recentTrail.shift();
 
-    // Wall collision
+    // Wall collision (или wrap при wallPass)
+    let wrapped = false;
     if (p.x < 0 || p.x >= FIELD_SIZE || p.y < 0 || p.y >= FIELD_SIZE) {
-      p.alive = false;
-      for (const other of state.players) {
-        if (other !== p && other.alive) other.score += 1;
+      if (p.effects.wallPass) {
+        p.x = ((p.x % FIELD_SIZE) + FIELD_SIZE) % FIELD_SIZE;
+        p.y = ((p.y % FIELD_SIZE) + FIELD_SIZE) % FIELD_SIZE;
+        wrapped = true;
+        // Краткий иммунитет, чтобы проверка следа не сработала на ложной
+        // позиции сразу после телепортации.
+        if (p.spawnImmunity < 0.1) p.spawnImmunity = 0.1;
+      } else {
+        p.alive = false;
+        for (const other of state.players) {
+          if (other !== p && other.alive) other.score += 1;
+        }
+        console.log(`${p.name} hit the wall`);
+        continue;
       }
-      console.log(`${p.name} hit the wall`);
-      continue;
     }
 
     // Pickup bonuses BEFORE trail collision check (иначе цветной круг бонуса
@@ -398,8 +433,8 @@ function updatePlayers(dt) {
       }
     }
 
-    // Draw
-    if (!p.inGap) {
+    // Draw (пропускаем при gap, noTrail, или wrap через стену)
+    if (!p.inGap && !p.effects.noTrail && !wrapped) {
       ctx.strokeStyle = p.color;
       ctx.lineWidth = p.thickness;
       ctx.lineCap = 'round';
@@ -493,10 +528,15 @@ function applyBonus(picker, bonus) {
   if (bonus.type === 'clearAll') {
     clearAllTrails();
   } else {
-    const targets = bonus.category === 'self'
-      ? [picker]
-      : state.players.filter(p => p !== picker && p.alive);
+    let targets;
+    if (bonus.category === 'self') targets = [picker];
+    else if (bonus.category === 'all') targets = state.players.filter(p => p.alive);
+    else targets = state.players.filter(p => p !== picker && p.alive);
     for (const p of targets) addEffect(p, bonus.type, EFFECT_DURATION);
+    // Общий wallPass — стены мигают
+    if (bonus.type === 'wallPass' && bonus.category === 'all') {
+      state.wallsBlinkTimer = EFFECT_DURATION;
+    }
   }
   console.log(`${picker.name} picked up ${bonus.type} (${bonus.category})`);
 }
@@ -521,6 +561,8 @@ const EFFECT_LABELS = {
   thinLine: '➖',
   thickLine: '⬛',
   reverse: '🔄',
+  noTrail: '🌫️',
+  wallPass: '👻',
 };
 
 function updateSidebar() {
@@ -604,6 +646,7 @@ function startRound() {
   }
   state.bonuses = [];
   state.bonusSpawnTimer = 3;
+  state.wallsBlinkTimer = 0;
   hideRoundOverlay();
   state.phase = 'countdown';
   updateSidebar();
