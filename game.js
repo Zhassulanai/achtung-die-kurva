@@ -416,14 +416,14 @@ function updatePlayers(dt) {
       // последних позиций собственной головы — это значит, что мы смотрим
       // на свой только что нарисованный бок (при повороте у толстой
       // змейки бок остаётся в нескольких кадрах назад).
-      const selfRadius = Math.max(p.thickness, p.baseThickness) * 1.0;
+      const selfRadius = Math.max(p.thickness, p.baseThickness) * 0.8;
       const selfR2 = selfRadius * selfRadius;
       let tooCloseToOld = false;
       const trail = p.recentTrail;
-      // Проверяем все точки recentTrail (последние ~0.5с пути), чтобы
-      // покрыть толстую змейку в начале поворота.
-      const startIdx = 0;
-      for (let i = trail.length - 1; i >= startIdx; i--) {
+      // Проверяем точки recentTrail кроме самой последней (она = текущая
+      // позиция головы, всегда близка к lookAhead-точке и блокировала бы
+      // любую коллизию). Окно — все ~0.5с пути назад.
+      for (let i = trail.length - 2; i >= 0; i--) {
         const dx = cx - trail[i].x;
         const dy = cy - trail[i].y;
         if (dx * dx + dy * dy < selfR2) { tooCloseToOld = true; break; }
